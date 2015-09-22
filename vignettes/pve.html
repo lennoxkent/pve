@@ -1,0 +1,134 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <meta name="author" content="Michael Kent" />
+  <meta name="date" content="2015-09-21" />
+  <title>Percentage of Variance Explained</title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <style type="text/css">
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #007020; font-weight: bold; }
+code > span.dt { color: #902000; }
+code > span.dv { color: #40a070; }
+code > span.bn { color: #40a070; }
+code > span.fl { color: #40a070; }
+code > span.ch { color: #4070a0; }
+code > span.st { color: #4070a0; }
+code > span.co { color: #60a0b0; font-style: italic; }
+code > span.ot { color: #007020; }
+code > span.al { color: #ff0000; font-weight: bold; }
+code > span.fu { color: #06287e; }
+code > span.er { color: #ff0000; font-weight: bold; }
+  </style>
+</head>
+<body>
+<div id="header">
+<h1 class="title">Percentage of Variance Explained</h1>
+<h2 class="author">Michael Kent</h2>
+<h3 class="date">2015-09-21</h3>
+</div>
+<h2 id="summary">Summary</h2>
+<p>This package extends the fastICA package (Hyvärinen, 1999) by providing a function which calculates a proxy for the variance of each of the separated signals, which otherwise have arbitrary variance. This proxy for variance is termed the <em>Percentage of Variance Explained</em> (PVE).</p>
+<h2 id="details">Details</h2>
+<h3 id="introduction">1. Introduction</h3>
+<p>Hyvärinen and Oja (2000) describe Independent Component Analysis (ICA) as a method for separating non-Gaussian signals from Gaussian mixtures of signals, where independence between the signals is maximised. A popular algorithm used to perform ICA is the excellent fastICA algorithm by Hyvärinen (1999) and its R package by J. Marchini and C. Heaton. The algorithm implements the linear noise-free model of ICA which is shown in the following equation:</p>
+<p><span class="math"><em>X</em> = <em>S</em><em>A</em></span></p>
+<p>The mixtures of signals are contained in the columns of <span class="math"><em>X</em></span>, while the mixing matrix is represented by <span class="math"><em>A</em></span> and separated signals in the columns of <span class="math"><em>S</em></span>. In the ICA model the signals have arbitrary variance as both <span class="math"><em>S</em></span> and <span class="math"><em>A</em></span> have to be estimated from the mixtures. Additionally, the signs, order of the signals and corresponding columns of <span class="math"><em>A</em></span> are also arbitrary.</p>
+<p>In many applications, some signals are of more interest than others. Therefore a measure of importance is required to rank the signals (e.g.: by uncertainty or by a non-Gaussian measure). However, if the variance of the signals is of interest then the arbitrary variance of the signals poses a obstacle. To address the obstacle, this package proposes a proxy measure of variance, termed the <em>Percentage of Variance Explained</em> (PVE).</p>
+<p>Associating a measure of variance to a signal is not uncommon. For example Westra et al. (2010) and Lotsch et al. (2003). However, it is not known how the specific measure of variance is calculated. Therefore the PVE calculation serves as a way of creating a proxy measure for the variance of signals. While there is currently no known formal proof for validating the PVE calculation, there is an application within Kent (2011).</p>
+<p>Section 2 works through an example of the PVE calculation, while section 3 discusses the code for calculating the PVE of signals.</p>
+<h3 id="worked-example-of-pve">2. Worked Example of PVE</h3>
+<p>Load the package</p>
+<pre class="sourceCode r"><code class="sourceCode r">devtools::<span class="kw">load_all</span>()
+<span class="co">#&gt; Loading pve</span>
+<span class="co">#&gt; Loading required package: fastICA</span></code></pre>
+<p>Create artificial signals, each of length <em>n</em>. Signal <em>s1</em> is a sin wave while <em>s2</em> is a saw tooth function. <em>S</em> contains <em>s1</em> and <em>s2</em> in its columns. Plots of the signals are shown in figure 1 at end of example.</p>
+<pre class="sourceCode r"><code class="sourceCode r">n &lt;-<span class="st"> </span><span class="dv">100</span>
+s1 &lt;-<span class="st"> </span><span class="kw">sin</span>(<span class="dv">0</span>:(n -<span class="st"> </span><span class="dv">1</span>) /<span class="st"> </span><span class="dv">2</span>)
+s2 &lt;-<span class="st"> </span>-(<span class="dv">15</span> -<span class="st"> </span><span class="kw">abs</span>(<span class="dv">0</span>:(n -<span class="st"> </span><span class="dv">1</span>) %%<span class="st"> </span>(<span class="dv">2</span> *<span class="st"> </span><span class="dv">15</span>) -<span class="st"> </span><span class="dv">15</span>)) /<span class="st"> </span><span class="dv">5</span>
+S &lt;-<span class="st"> </span><span class="kw">cbind</span>(s1, s2)</code></pre>
+<p>Create the mixing matrix. For this example, arbitrary values with range <span class="math"> − 1 &lt; <em>i</em> &lt; 1</span> are used. The mixtures of <span class="math"><em>X</em></span> are created from the product of <span class="math"><em>S</em></span> and <span class="math"><em>A</em></span>, and the column means are removed from the mixtures. Although the fastICA removes column means, the means are not returned by the function. As the means are needed by for the PVE calculation, the column means are rather removed and stored before performing ICA in <span class="math"><em>v</em><em>c</em><em>m</em></span>.</p>
+<pre class="sourceCode r"><code class="sourceCode r">A &lt;-<span class="st"> </span><span class="kw">matrix</span>(<span class="kw">c</span>(-<span class="fl">0.141</span>, -<span class="fl">0.293</span>, -<span class="fl">0.301</span>, <span class="fl">0.603</span>), <span class="dt">nrow=</span><span class="dv">2</span>, <span class="dt">ncol=</span><span class="dv">2</span>)
+X &lt;-<span class="st"> </span>S %*%<span class="st"> </span>A
+vcm &lt;-<span class="st"> </span><span class="kw">matrix</span>(<span class="ot">NA</span>, <span class="dt">nrow=</span><span class="dv">1</span>, <span class="dt">ncol=</span><span class="kw">ncol</span>(X))
+for (i in <span class="dv">1</span>:<span class="kw">ncol</span>(X)){
+  vcm[i] &lt;-<span class="st"> </span><span class="kw">mean</span>(X[, i])
+  X[, i] &lt;-<span class="st"> </span>X[, i] -<span class="st"> </span>vcm[i]
+}</code></pre>
+<p>Next, perform ICA on <span class="math"><em>X</em></span> using the fastICA algorithm. For the PVE calculation to work, there must not be any dimension reduction at this point. Therefore the same number of signals as columns in <span class="math"><em>X</em></span> are separated from the mixtures.</p>
+<pre class="sourceCode r"><code class="sourceCode r">ica_results &lt;-<span class="st"> </span><span class="kw">fastICA</span>(X, <span class="dt">n.comp=</span><span class="kw">ncol</span>(X), <span class="dt">alg.typ=</span><span class="st">&quot;parallel&quot;</span>, 
+  <span class="dt">method=</span><span class="st">&quot;C&quot;</span>, <span class="dt">fun=</span><span class="st">&quot;logcosh&quot;</span>, <span class="dt">verbose=</span><span class="ot">TRUE</span>, <span class="dt">maxit=</span><span class="dv">200</span>, <span class="dt">tol=</span><span class="fl">1e-04</span>, 
+  <span class="dt">alpha=</span><span class="dv">1</span>)
+<span class="co">#&gt; Centering</span>
+<span class="co">#&gt; Whitening</span>
+<span class="co">#&gt; Symmetric FastICA using logcosh approx. to neg-entropy function</span>
+<span class="co">#&gt; Iteration 1 tol=0.042198</span>
+<span class="co">#&gt; Iteration 2 tol=0.000370</span>
+<span class="co">#&gt; Iteration 3 tol=0.000001</span></code></pre>
+<p>Lastly, calculate the PVE for each of the signals and print the results. As the fastICA algorithm has a stochastic component, identical runs may produce slightly different results. This may effect the PVE values and the order that they are presented in. See the next section for details on the PVE calculation.</p>
+<pre class="sourceCode r"><code class="sourceCode r">signal_pves &lt;-<span class="st"> </span><span class="kw">calculate_pve_of_signals</span>(X, ica_results$A, 
+  ica_results$S, vcm)
+<span class="kw">print</span>(signal_pves)
+<span class="co">#&gt; [1] 86.84051 13.15949</span></code></pre>
+<p>The plots for the artificial signals, mixtures, and separated signals are shown below in figure 1 below.</p>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">par</span>(<span class="dt">mfcol=</span><span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">3</span>))
+for (i in <span class="dv">1</span>:<span class="kw">ncol</span>(S)){
+  <span class="kw">plot</span>(S[, i], <span class="dt">type=</span><span class="st">&quot;l&quot;</span>, <span class="dt">main=</span><span class="kw">paste</span>(<span class="st">&quot;Artificial Signal&quot;</span>, i), 
+    <span class="dt">xlab=</span><span class="st">&quot;&quot;</span>, <span class="dt">ylab=</span><span class="st">&quot;&quot;</span>)
+}
+for (i in <span class="dv">1</span>:<span class="kw">ncol</span>(X)){
+  <span class="kw">plot</span>(X[, i], <span class="dt">type=</span><span class="st">&quot;l&quot;</span>, <span class="dt">main=</span><span class="kw">paste</span>(<span class="st">&quot;Mixture&quot;</span>, i), <span class="dt">xlab=</span><span class="st">&quot;&quot;</span>, 
+    <span class="dt">ylab=</span><span class="st">&quot;&quot;</span>)
+}
+for (i in <span class="dv">1</span>:<span class="kw">ncol</span>(ica_results$S)){
+  <span class="kw">plot</span>(ica_results$S[, i], <span class="dt">type=</span><span class="st">&quot;l&quot;</span>, 
+    <span class="dt">main=</span><span class="kw">paste</span>(<span class="st">&quot;Separated Signal &quot;</span>, i, <span class="st">&quot; PVE=&quot;</span>, 
+    <span class="kw">round</span>(signal_pves[i], <span class="dv">2</span>), <span class="st">&quot;%&quot;</span>,  <span class="dt">sep=</span><span class="st">&quot;&quot;</span>), <span class="dt">xlab=</span><span class="st">&quot;&quot;</span>, <span class="dt">ylab=</span><span class="st">&quot;&quot;</span>)
+}</code></pre>
+<div class="figure">
+<img src="figure/unnamed-chunk-7-1.png" alt="Artificial signals, mixtures, and separated signals in figure columns. Order, signs, and PVE of separated signals may change between identical runs." /><p class="caption">Artificial signals, mixtures, and separated signals in figure columns. Order, signs, and PVE of separated signals may change between identical runs.</p>
+</div>
+<p></p>
+<h3 id="pve-calculation">3. PVE Calculation</h3>
+<p>The previous section worked through an example of the PVE calculation. This section discusses the function for calculating the PVE of signals and is presented below, though it is not a formal proof of the calculation.</p>
+<pre class="sourceCode r"><code class="sourceCode r">calculate_pve_of_signals =<span class="st"> </span>function(X, A, S, vcm){
+  original_var &lt;-<span class="st"> </span><span class="kw">var</span>(<span class="kw">matrix</span>(X))
+  pve_list &lt;-<span class="st"> </span><span class="kw">list</span>()
+  for (i in <span class="dv">1</span>:<span class="kw">ncol</span>(S)){
+    a &lt;-<span class="st"> </span><span class="kw">matrix</span>(A[i, ], <span class="dt">nrow =</span> <span class="dv">1</span>, <span class="dt">ncol =</span> <span class="kw">ncol</span>(A))
+    s &lt;-<span class="st"> </span><span class="kw">matrix</span>(S[ ,i], <span class="dt">nrow =</span> <span class="kw">nrow</span>(S), <span class="dt">ncol =</span> <span class="dv">1</span>)
+    var_s &lt;-<span class="st"> </span><span class="kw">var</span>(<span class="kw">matrix</span>((s %*%<span class="st"> </span>a))  +<span class="st"> </span>(vcm[i] /<span class="st"> </span><span class="kw">ncol</span>(S)))
+    pve_s &lt;-<span class="st"> </span>var_s /<span class="st"> </span>original_var *<span class="st"> </span><span class="dv">100</span>
+    pve_list &lt;-<span class="st"> </span><span class="kw">c</span>(pve_list, pve_s)
+  }
+  pve.list &lt;-<span class="st"> </span><span class="kw">as.numeric</span>(pve_list)
+  <span class="kw">return</span>(pve.list)
+}</code></pre>
+<p>The inputs to the function are: <span class="math"><em>X</em></span> Mixtures matrix containing mixtures of signals in columns. The matrix must have its column means removed (discussed below). <span class="math"><em>A</em></span> is the mixing matrix, <span class="math"><em>S</em></span> are the separated signals in columns of the matrix, and <span class="math"><em>v</em><em>c</em><em>m</em></span> is the vector containing the column means of <span class="math"><em>X</em></span>. Lastly the function returns a list containing the PVE for each signal.</p>
+<p>The main part of the function is the line:</p>
+<pre class="sourceCode r"><code class="sourceCode r">  var_s &lt;-<span class="st"> </span><span class="kw">var</span>(<span class="kw">matrix</span>((s %*%<span class="st"> </span>a))  +<span class="st"> </span>(vcm[i] /<span class="st"> </span><span class="kw">ncol</span>(S)))</code></pre>
+<p>The line calculates the proxy variance for the <span class="math"><em>i</em><sup><em>t</em><em>h</em></sup></span> signal. The proxy is based on the following idea (var is the variance function):</p>
+<p>Given the ICA model: <span class="math"><em>X</em> = <em>S</em><em>A</em></span></p>
+<p>then <span class="math"><em>v</em><em>a</em><em>r</em>(<em>X</em>) = <em>v</em><em>a</em><em>r</em>(<em>S</em><em>A</em>)</span></p>
+<p>So too <span class="math"><em>v</em><em>a</em><em>r</em>(<em>S</em><em>A</em>) = Σ <em>v</em><em>a</em><em>r</em>(<em>S</em><sub><em>n</em> × <em>i</em></sub></span> <span class="math"><em>A</em><sub><em>i</em> × <em>m</em></sub></span>) for <span class="math"><em>i</em></span> ∈ <span class="math">1, 2, 3, . . . , <em>m</em></span></p>
+<p>Note that the variance is calculated on a one dimensional vector/matrix. The matrix is created by taking the corresponding two dimensional matrix and making into a one dimensional vector/matrix using the <span class="math"><em>m</em><em>a</em><em>t</em><em>r</em><em>i</em><em>x</em>()</span> function.</p>
+<p>The next section of code adds back a portion of the column mean of <span class="math"><em>X</em></span>:</p>
+<pre class="sourceCode r"><code class="sourceCode r">  +<span class="st"> </span>vcm[i] /<span class="st"> </span><span class="kw">ncol</span>(S)</code></pre>
+<p>A portion of the total column mean is added to the signal to ensure that the total mean for <span class="math"><em>A</em><em>S</em></span> remains equal to that of <span class="math"><em>X</em></span> in the ICA model. To do this a vector containing the column means (<span class="math"><em>v</em><em>c</em><em>m</em></span>) is used. This requires that before ICA is performed, the column means are removed from <span class="math"><em>X</em></span> as the fastICA algorithm removes them but does not return them.</p>
+<p>Lastly, the following line takes the proxy for variance and scales it to represent a proportion of the input mixture variance. This becomes the PVE for the signal.</p>
+<pre class="sourceCode r"><code class="sourceCode r">pve_s &lt;-<span class="st"> </span>var_s /<span class="st"> </span>original_var *<span class="st"> </span><span class="dv">100</span></code></pre>
+<h2 id="references">References</h2>
+<p>A. Hyvärinen. Fast and Robust Fixed-Point Algorithms for Independent Component Analysis. <em>Neural Networks</em>, IEEE Transactions on, 10(3):626–634, 1999a.</p>
+<p>A. Hyvärinen and E. Oja. Independent Component Analysis: Algorithms and Applications. <em>Neural networks</em>, 13(4):411–430, 2000.</p>
+<p>M. Kent. The Value of Independent Component Analysis in Identifying Climate Processes. Master’s thesis, University of Cape Town, 2011. URL: http://hdl.handle.net/11427/11457.</p>
+<p>A. Lotsch, M. A. Friedl, and J. Pinzón. Spatio-Temporal Deconvolution of NDVI Image Sequences Using Independent Component Analysis. <em>IEEE Transactions on Geoscience and Remote Sensing</em>, 41(12):2938–2942, 2003.</p>
+<p>S. Westra, C. Brown, U. Lall, and A. Sharma. Interpreting Variability in Global SST Data Using Independent Component Analysis and Principal Component Analysis. <em>International Journal of Climatology</em>, 346(March 2009):333–346, 2010. doi: 10.1002/joc.1888.</p>
+</body>
+</html>

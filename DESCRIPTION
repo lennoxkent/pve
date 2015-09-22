@@ -1,0 +1,17 @@
+Package: pve
+Title: Percentage of Variance Explained.
+Version: 0.0.0.9000
+Authors@R: person("Michael", "Kent", email = "lennoxkent@gmail.com", role = c("aut", "cre"))
+Description: When using linear and noise free Independent Component Analysis, the separated signals
+    have arbitrary variance. This package provides an alternative to the assignment of variance, by estimating
+    the variance represented by a signal with respect to the total variance of the set of mixtures. This is termed
+    the Percentage of Variance Explained (PVE). Note that no formal proof of this estimation is currently availible.
+Depends:
+  R (>= 3.2.2), 
+  fastICA (>= 1.2-0)
+Suggests:
+    knitr,
+    rmarkdown
+License: GPL3
+LazyData: true
+
