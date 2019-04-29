@@ -5,7 +5,7 @@
   <meta http-equiv="Content-Style-Type" content="text/css" />
   <meta name="generator" content="pandoc" />
   <meta name="author" content="Michael Kent" />
-  <meta name="date" content="2015-09-21" />
+  <meta name="date" content="2015-09-22" />
   <title>Percentage of Variance Explained</title>
   <style type="text/css">code{white-space: pre;}</style>
   <style type="text/css">
@@ -32,23 +32,22 @@ code > span.er { color: #ff0000; font-weight: bold; }
 <div id="header">
 <h1 class="title">Percentage of Variance Explained</h1>
 <h2 class="author">Michael Kent</h2>
-<h3 class="date">2015-09-21</h3>
+<h3 class="date">2015-09-22</h3>
 </div>
 <h2 id="summary">Summary</h2>
-<p>This package extends the fastICA package (Hyvärinen, 1999) by providing a function which calculates a proxy for the variance of each of the separated signals, which otherwise have arbitrary variance. This proxy for variance is termed the <em>Percentage of Variance Explained</em> (PVE).</p>
+<p>Signals separated using the linear noise-free Independent Component Analysis model have arbitrary variance, sign, and order. In many applications, some signals are of more interest than others. Therefore a measure of importance is required to order the signals. However, if the variance of the signals is of interest then their arbitrary variance poses a obstacle or ordering them. To address the obstacle, this package provides a proxy measure of variance, termed the <em>Percentage of Variance Explained</em> (PVE).</p>
 <h2 id="details">Details</h2>
 <h3 id="introduction">1. Introduction</h3>
-<p>Hyvärinen and Oja (2000) describe Independent Component Analysis (ICA) as a method for separating non-Gaussian signals from Gaussian mixtures of signals, where independence between the signals is maximised. A popular algorithm used to perform ICA is the excellent fastICA algorithm by Hyvärinen (1999) and its R package by J. Marchini and C. Heaton. The algorithm implements the linear noise-free model of ICA which is shown in the following equation:</p>
+<p>Hyvärinen and Oja (2000) describe Independent Component Analysis (ICA) as a method for separating non-Gaussian signals from Gaussian mixtures of signals, where independence between the signals is maximised. A popular algorithm used to perform ICA is the excellent fastICA algorithm by Hyvärinen (1999) and its R package by J. Marchini and C. Heaton. The algorithm implements the linear noise-free model and is used to demonstrate how signals can be separated from data in this example. The linear noise-free equation is as follows:</p>
 <p><span class="math"><em>X</em> = <em>S</em><em>A</em></span></p>
 <p>The mixtures of signals are contained in the columns of <span class="math"><em>X</em></span>, while the mixing matrix is represented by <span class="math"><em>A</em></span> and separated signals in the columns of <span class="math"><em>S</em></span>. In the ICA model the signals have arbitrary variance as both <span class="math"><em>S</em></span> and <span class="math"><em>A</em></span> have to be estimated from the mixtures. Additionally, the signs, order of the signals and corresponding columns of <span class="math"><em>A</em></span> are also arbitrary.</p>
 <p>In many applications, some signals are of more interest than others. Therefore a measure of importance is required to rank the signals (e.g.: by uncertainty or by a non-Gaussian measure). However, if the variance of the signals is of interest then the arbitrary variance of the signals poses a obstacle. To address the obstacle, this package proposes a proxy measure of variance, termed the <em>Percentage of Variance Explained</em> (PVE).</p>
-<p>Associating a measure of variance to a signal is not uncommon. For example Westra et al. (2010) and Lotsch et al. (2003). However, it is not known how the specific measure of variance is calculated. Therefore the PVE calculation serves as a way of creating a proxy measure for the variance of signals. While there is currently no known formal proof for validating the PVE calculation, there is an application within Kent (2011).</p>
+<p>Associating a measure of variance to a signal is not uncommon. For example Westra et al. (2010) and Lotsch et al. (2003). However, it is not known how the specific measure of variance is calculated. Therefore the PVE calculation serves as a way of creating a proxy measure for the variance of signals. While there is currently no known formal proof for validating the PVE calculation, the PVE definition and an application of it can be found within Kent (2011).</p>
 <p>Section 2 works through an example of the PVE calculation, while section 3 discusses the code for calculating the PVE of signals.</p>
 <h3 id="worked-example-of-pve">2. Worked Example of PVE</h3>
-<p>Load the package</p>
+<p>Load the library</p>
 <pre class="sourceCode r"><code class="sourceCode r">devtools::<span class="kw">load_all</span>()
-<span class="co">#&gt; Loading pve</span>
-<span class="co">#&gt; Loading required package: fastICA</span></code></pre>
+<span class="co">#&gt; Loading pve</span></code></pre>
 <p>Create artificial signals, each of length <em>n</em>. Signal <em>s1</em> is a sin wave while <em>s2</em> is a saw tooth function. <em>S</em> contains <em>s1</em> and <em>s2</em> in its columns. Plots of the signals are shown in figure 1 at end of example.</p>
 <pre class="sourceCode r"><code class="sourceCode r">n &lt;-<span class="st"> </span><span class="dv">100</span>
 s1 &lt;-<span class="st"> </span><span class="kw">sin</span>(<span class="dv">0</span>:(n -<span class="st"> </span><span class="dv">1</span>) /<span class="st"> </span><span class="dv">2</span>)
@@ -63,20 +62,19 @@ for (i in <span class="dv">1</span>:<span class="kw">ncol</span>(X)){
   X[, i] &lt;-<span class="st"> </span>X[, i] -<span class="st"> </span>vcm[i]
 }</code></pre>
 <p>Next, perform ICA on <span class="math"><em>X</em></span> using the fastICA algorithm. For the PVE calculation to work, there must not be any dimension reduction at this point. Therefore the same number of signals as columns in <span class="math"><em>X</em></span> are separated from the mixtures.</p>
-<pre class="sourceCode r"><code class="sourceCode r">ica_results &lt;-<span class="st"> </span><span class="kw">fastICA</span>(X, <span class="dt">n.comp=</span><span class="kw">ncol</span>(X), <span class="dt">alg.typ=</span><span class="st">&quot;parallel&quot;</span>, 
-  <span class="dt">method=</span><span class="st">&quot;C&quot;</span>, <span class="dt">fun=</span><span class="st">&quot;logcosh&quot;</span>, <span class="dt">verbose=</span><span class="ot">TRUE</span>, <span class="dt">maxit=</span><span class="dv">200</span>, <span class="dt">tol=</span><span class="fl">1e-04</span>, 
-  <span class="dt">alpha=</span><span class="dv">1</span>)
+<pre class="sourceCode r"><code class="sourceCode r">ica_results &lt;-<span class="st"> </span>fastICA::<span class="kw">fastICA</span>(X, <span class="dt">n.comp=</span><span class="kw">ncol</span>(X), 
+  <span class="dt">alg.typ=</span><span class="st">&quot;parallel&quot;</span>, <span class="dt">method=</span><span class="st">&quot;C&quot;</span>, <span class="dt">fun=</span><span class="st">&quot;logcosh&quot;</span>, <span class="dt">verbose=</span><span class="ot">TRUE</span>, 
+  <span class="dt">maxit=</span><span class="dv">200</span>, <span class="dt">tol=</span><span class="fl">1e-04</span>, <span class="dt">alpha=</span><span class="dv">1</span>)  
 <span class="co">#&gt; Centering</span>
 <span class="co">#&gt; Whitening</span>
 <span class="co">#&gt; Symmetric FastICA using logcosh approx. to neg-entropy function</span>
-<span class="co">#&gt; Iteration 1 tol=0.042198</span>
-<span class="co">#&gt; Iteration 2 tol=0.000370</span>
-<span class="co">#&gt; Iteration 3 tol=0.000001</span></code></pre>
+<span class="co">#&gt; Iteration 1 tol=0.004863</span>
+<span class="co">#&gt; Iteration 2 tol=0.000016</span></code></pre>
 <p>Lastly, calculate the PVE for each of the signals and print the results. As the fastICA algorithm has a stochastic component, identical runs may produce slightly different results. This may effect the PVE values and the order that they are presented in. See the next section for details on the PVE calculation.</p>
 <pre class="sourceCode r"><code class="sourceCode r">signal_pves &lt;-<span class="st"> </span><span class="kw">calculate_pve_of_signals</span>(X, ica_results$A, 
   ica_results$S, vcm)
 <span class="kw">print</span>(signal_pves)
-<span class="co">#&gt; [1] 86.84051 13.15949</span></code></pre>
+<span class="co">#&gt; [1] 86.83164 13.16836</span></code></pre>
 <p>The plots for the artificial signals, mixtures, and separated signals are shown below in figure 1 below.</p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="kw">par</span>(<span class="dt">mfcol=</span><span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">3</span>))
 for (i in <span class="dv">1</span>:<span class="kw">ncol</span>(S)){
@@ -117,7 +115,7 @@ for (i in <span class="dv">1</span>:<span class="kw">ncol</span>(ica_results$S))
 <p>The line calculates the proxy variance for the <span class="math"><em>i</em><sup><em>t</em><em>h</em></sup></span> signal. The proxy is based on the following idea (var is the variance function):</p>
 <p>Given the ICA model: <span class="math"><em>X</em> = <em>S</em><em>A</em></span></p>
 <p>then <span class="math"><em>v</em><em>a</em><em>r</em>(<em>X</em>) = <em>v</em><em>a</em><em>r</em>(<em>S</em><em>A</em>)</span></p>
-<p>So too <span class="math"><em>v</em><em>a</em><em>r</em>(<em>S</em><em>A</em>) = Σ <em>v</em><em>a</em><em>r</em>(<em>S</em><sub><em>n</em> × <em>i</em></sub></span> <span class="math"><em>A</em><sub><em>i</em> × <em>m</em></sub></span>) for <span class="math"><em>i</em></span> ∈ <span class="math">1, 2, 3, . . . , <em>m</em></span></p>
+<p>So too <span class="math"><em>v</em><em>a</em><em>r</em>(<em>S</em><em>A</em>) = Σ <em>v</em><em>a</em><em>r</em>(<em>S</em><sub><em>n</em> × <em>i</em></sub></span> <span class="math"><em>A</em><sub><em>i</em> × <em>m</em></sub></span>) for <span class="math"><em>i</em> ∈ 1, 2, 3, . . . , <em>m</em></span></p>
 <p>Note that the variance is calculated on a one dimensional vector/matrix. The matrix is created by taking the corresponding two dimensional matrix and making into a one dimensional vector/matrix using the <span class="math"><em>m</em><em>a</em><em>t</em><em>r</em><em>i</em><em>x</em>()</span> function.</p>
 <p>The next section of code adds back a portion of the column mean of <span class="math"><em>X</em></span>:</p>
 <pre class="sourceCode r"><code class="sourceCode r">  +<span class="st"> </span>vcm[i] /<span class="st"> </span><span class="kw">ncol</span>(S)</code></pre>

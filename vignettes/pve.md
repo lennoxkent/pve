@@ -1,7 +1,7 @@
 ---
 title: "Percentage of Variance Explained"
 author: "Michael Kent"
-date: "2015-09-21"
+date: "2015-09-22"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Percentage of Variance Explained}
@@ -10,11 +10,11 @@ vignette: >
 ---
 
 ## Summary
-This package extends the fastICA package (Hyv&#228;rinen, 1999) by providing a function which calculates a proxy for the variance of each of the separated signals, which otherwise have arbitrary variance. This proxy for variance is termed the _Percentage of Variance Explained_ (PVE). 
+Signals separated using the linear noise-free Independent Component Analysis model have arbitrary variance, sign, and order. In many applications, some signals are of more interest than others. Therefore a measure of importance is required to order the signals. However, if the variance of the signals is of interest then their arbitrary variance poses a obstacle or ordering them. To address the obstacle, this package provides a proxy measure of variance, termed the _Percentage of Variance Explained_ (PVE). 
 
 ## Details
 ### 1. Introduction
-Hyv&#228;rinen and Oja (2000) describe Independent Component Analysis (ICA) as a method for separating non-Gaussian signals from Gaussian mixtures of signals, where independence between the signals is maximised. A popular algorithm used to perform ICA is the excellent fastICA algorithm by Hyv&#228;rinen (1999) and its R package by J. Marchini and C. Heaton. The algorithm implements the linear noise-free model of ICA which is shown in the following equation:
+Hyv&#228;rinen and Oja (2000) describe Independent Component Analysis (ICA) as a method for separating non-Gaussian signals from Gaussian mixtures of signals, where independence between the signals is maximised. A popular algorithm used to perform ICA is the excellent fastICA algorithm by Hyv&#228;rinen (1999) and its R package by J. Marchini and C. Heaton. The algorithm implements the linear noise-free model and is used to demonstrate how signals can be separated from data in this example. The linear noise-free equation is as follows:
 
 $X = SA$
 
@@ -22,20 +22,18 @@ The mixtures of signals are contained in the columns of $X$, while the mixing ma
 
 In many applications, some signals are of more interest than others. Therefore a measure of importance is required to rank the signals (e.g.: by uncertainty or by a non-Gaussian measure). However, if the variance of the signals is of interest then the arbitrary variance of the signals poses a obstacle. To address the obstacle, this package proposes a proxy measure of variance, termed the _Percentage of Variance Explained_ (PVE). 
 
-Associating a measure of variance to a signal is not uncommon. For example Westra et al. (2010) and Lotsch et al. (2003). However, it is not known how the specific measure of variance is calculated.  Therefore the PVE calculation serves as a way of creating a proxy measure for the variance of signals. While there is currently no known formal proof for validating the PVE calculation, there is an application within Kent (2011).
+Associating a measure of variance to a signal is not uncommon. For example Westra et al. (2010) and Lotsch et al. (2003). However, it is not known how the specific measure of variance is calculated.  Therefore the PVE calculation serves as a way of creating a proxy measure for the variance of signals. While there is currently no known formal proof for validating the PVE calculation, the PVE definition and an application of it can be found within Kent (2011).
 
 Section 2 works through an example of the PVE calculation, while section 3 discusses the code for calculating the PVE of signals.
 
 ### 2. Worked Example of PVE
 
 
-
-Load the package
+Load the library
 
 ```r
 devtools::load_all()
 #> Loading pve
-#> Loading required package: fastICA
 ```
 
 Create artificial signals, each of length _n_. Signal _s1_ is a sin wave while _s2_ is a saw tooth function. _S_ contains _s1_ and _s2_ in its columns. Plots of the signals are shown in figure 1 at end of example.
@@ -64,15 +62,16 @@ Next, perform ICA on $X$ using the fastICA algorithm. For the PVE calculation to
 
 
 ```r
-ica_results <- fastICA(X, n.comp=ncol(X), alg.typ="parallel", 
-  method="C", fun="logcosh", verbose=TRUE, maxit=200, tol=1e-04, 
-  alpha=1)
+ica_results <- fastICA::fastICA(X, n.comp=ncol(X), 
+  alg.typ="parallel", method="C", fun="logcosh", verbose=TRUE, 
+  maxit=200, tol=1e-04, alpha=1)  
 #> Centering
 #> Whitening
 #> Symmetric FastICA using logcosh approx. to neg-entropy function
-#> Iteration 1 tol=0.042198
-#> Iteration 2 tol=0.000370
-#> Iteration 3 tol=0.000001
+#> Iteration 1 tol=0.054680
+#> Iteration 2 tol=0.047035
+#> Iteration 3 tol=0.000255
+#> Iteration 4 tol=0.000001
 ```
 
 Lastly, calculate the PVE for each of the signals and print the results. As the fastICA algorithm has a stochastic component, identical runs may produce slightly different results. This may effect the PVE values and the order that they are presented in. See the next section for details on the PVE calculation.
@@ -81,7 +80,7 @@ Lastly, calculate the PVE for each of the signals and print the results. As the 
 signal_pves <- calculate_pve_of_signals(X, ica_results$A, 
   ica_results$S, vcm)
 print(signal_pves)
-#> [1] 86.84051 13.15949
+#> [1] 13.1541 86.8459
 ```
 
 The plots for the artificial signals, mixtures, and separated signals are shown below in figure 1 below. 
@@ -141,7 +140,7 @@ Given the ICA model: $X = SA$
 
 then $var(X) = var(SA)$  
 
-So too $var(SA) = \Sigma var(S_{n \times i }$ $A_{i \times m}$) for $i$ &#8712;  $1, 2, 3, ..., m$
+So too $var(SA) = \Sigma var(S_{n \times i }$ $A_{i \times m}$) for $i \in 1, 2, 3, ..., m$
 
 Note that the variance is calculated on a one dimensional vector/matrix. The matrix is created by taking the corresponding two dimensional matrix and making into a one dimensional vector/matrix using the $matrix()$ function.
 
@@ -166,7 +165,6 @@ A. Hyv&#228;rinen and E. Oja. Independent Component Analysis: Algorithms and App
 
 M. Kent. The Value of Independent Component Analysis in Identifying Climate Processes. Master’s thesis, University of Cape Town, 2011. URL: 
 http://hdl.handle.net/11427/11457.
-
 
 A. Lotsch, M. A. Friedl, and J. Pinz&#243;n. Spatio-Temporal Deconvolution of NDVI Image Sequences Using Independent Component Analysis. _IEEE Transactions on Geoscience and Remote Sensing_, 41(12):2938–2942, 2003.
 
