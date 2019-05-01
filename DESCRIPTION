@@ -5,10 +5,10 @@ Authors@R: person("Michael", "Kent", email = "lennoxkent@gmail.com", role = c("a
 Description: When using linear and noise free Independent Component Analysis, the separated signals have arbitrary variance. This package provides a proxy to the variance of signals, by estimating the variance represented by a signal with respect to the total variance of the set of mixtures. This is termed the Percentage of Variance Explained (PVE). Note that no formal proof of this estimation is currently available.
 Depends:
   R (>= 3.2.2)
+Imports:
+  fastICA (>= 1.2-0),
+  rmarkdown
 Suggests:
-    fastICA (>= 1.2-0),
-    knitr,
-    rmarkdown
+  knitr
 License: GPL-3
 LazyData: true
-
