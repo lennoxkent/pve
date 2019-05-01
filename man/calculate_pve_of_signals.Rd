@@ -27,7 +27,6 @@ of signals.
 for this calculation.
 }
 \examples{
-(coming soon !*)
 }
 \seealso{
 fastICA
